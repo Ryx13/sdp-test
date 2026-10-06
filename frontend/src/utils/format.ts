@@ -14,6 +14,11 @@ export function formatDate(iso: string): string {
   return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
+/** Format a unix timestamp in seconds (as reported by git) in local time. */
+export function formatTimestamp(unixSeconds: number): string {
+  return formatDate(new Date(unixSeconds * 1000).toISOString())
+}
+
 export function shortSha(sha: string | null): string {
   return sha ? sha.slice(0, 10) : '—'
 }

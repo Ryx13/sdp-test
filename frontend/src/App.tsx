@@ -1,6 +1,11 @@
 import { RepositoriesPage } from './pages/RepositoriesPage'
+import { RepositoryDetailPage } from './pages/RepositoryDetailPage'
+import { repositoryIdFromHash, useHashRoute } from './utils/router'
 
 export default function App() {
+  const hash = useHashRoute()
+  const repoId = repositoryIdFromHash(hash)
+
   return (
     <div className="app">
       <header className="app-header">
@@ -14,9 +19,7 @@ export default function App() {
           </div>
         </div>
       </header>
-      <main>
-        <RepositoriesPage />
-      </main>
+      <main>{repoId ? <RepositoryDetailPage repoId={repoId} /> : <RepositoriesPage />}</main>
     </div>
   )
 }

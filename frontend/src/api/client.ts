@@ -1,4 +1,4 @@
-import type { Repository } from '../types'
+import type { CommitPage, HistorySummary, Repository } from '../types'
 
 export class ApiError extends Error {
   status: number
@@ -50,4 +50,14 @@ export const api = {
 
   deleteRepository: (id: string) =>
     request<void>(`/api/repositories/${id}`, { method: 'DELETE' }),
+
+  getRepository: (id: string) => request<Repository>(`/api/repositories/${id}`),
+
+  analyseRepository: (id: string) =>
+    request<Repository>(`/api/repositories/${id}/analyse`, { method: 'POST' }),
+
+  listCommits: (id: string, offset = 0, limit = 50) =>
+    request<CommitPage>(`/api/repositories/${id}/commits?offset=${offset}&limit=${limit}`),
+
+  getSummary: (id: string) => request<HistorySummary>(`/api/repositories/${id}/summary`),
 }

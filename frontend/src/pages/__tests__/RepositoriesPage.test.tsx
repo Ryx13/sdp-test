@@ -15,6 +15,12 @@ const sampleRepo: Repository = {
   head_commit: 'a'.repeat(40),
   size_bytes: 1024 * 1024,
   created_at: '2024-01-02T10:00:00+00:00',
+  parse_status: 'ready',
+  parse_progress: 100,
+  parse_error: null,
+  commit_count: 42,
+  analysed_head: 'a'.repeat(40),
+  parsed_at: '2024-01-02T10:05:00+00:00',
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -37,6 +43,7 @@ describe('RepositoriesPage', () => {
     cleanup()
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
+    window.location.hash = ''
   })
 
   it('shows the empty state when no repositories exist', async () => {
@@ -54,6 +61,7 @@ describe('RepositoriesPage', () => {
     expect(screen.getByText('Ready')).toBeInTheDocument()
     expect(screen.getByText('1.0 MiB')).toBeInTheDocument()
     expect(screen.getByText('ZIP')).toBeInTheDocument()
+    expect(screen.getByText('42 commits')).toBeInTheDocument()
   })
 
   it('validates that a file is chosen before uploading', async () => {
@@ -96,6 +104,12 @@ describe('RepositoriesPage', () => {
       default_branch: null,
       head_commit: null,
       size_bytes: null,
+      parse_status: 'none',
+      parse_progress: 0,
+      parse_error: null,
+      commit_count: null,
+      analysed_head: null,
+      parsed_at: null,
     }
     let listCalls = 0
     stubFetch(() => {
@@ -112,5 +126,74 @@ describe('RepositoriesPage', () => {
       { timeout: 4000 },
     )
     expect(screen.getByText('unstable')).toBeInTheDocument()
+  })
+
+  it('starts a history analysis for idle repositories', async () => {
+    const idle: Repository = {
+      ...sampleRepo,
+      parse_status: 'none',
+      parse_progress: 0,
+      commit_count: null,
+      analysed_head: null,
+      parsed_at: null,
+    }
+    const calls: string[] = []
+    stubFetch((url, init) => {
+      calls.push(`${init?.method ?? 'GET'} ${url}`)
+      if (url.endsWith('/analyse')) {
+        return jsonResponse({ ...idle, parse_status: 'parsing' }, 202)
+      }
+      return jsonResponse([idle])
+    })
+
+    render(<RepositoriesPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Analyse' }))
+
+    await waitFor(() =>
+      expect(calls).toContain('POST /api/repositories/abc123/analyse'),
+    )
+    expect(await screen.findByText(/extracting the history/i)).toBeInTheDocument()
+  })
+
+  it('shows analysis progress while parsing and refreshes when it completes', async () => {
+    const parsing: Repository = {
+      ...sampleRepo,
+      parse_status: 'parsing',
+      parse_progress: 30,
+      commit_count: null,
+      analysed_head: null,
+      parsed_at: null,
+    }
+    let calls = 0
+    stubFetch(() => {
+      calls += 1
+      return calls === 1
+        ? jsonResponse([parsing])
+        : jsonResponse([
+            {
+              ...parsing,
+              parse_status: 'ready',
+              parse_progress: 100,
+              commit_count: 7,
+              analysed_head: 'a'.repeat(40),
+              parsed_at: '2024-01-02T10:06:00+00:00',
+            },
+          ])
+    })
+
+    render(<RepositoriesPage />)
+    expect(await screen.findByRole('progressbar')).toHaveAttribute('aria-valuenow', '30')
+
+    await waitFor(() => expect(screen.getByText('7 commits')).toBeInTheDocument(), {
+      timeout: 4000,
+    })
+  })
+
+  it('navigates to the detail route when a repository name is clicked', async () => {
+    stubFetch(() => jsonResponse([sampleRepo]))
+    render(<RepositoriesPage />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'sample' }))
+    expect(window.location.hash).toBe('#/repositories/abc123')
   })
 })

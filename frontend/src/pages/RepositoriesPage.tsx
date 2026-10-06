@@ -3,6 +3,7 @@ import { api, ApiError } from '../api/client'
 import type { Repository } from '../types'
 import { AddRepositoryForm } from '../components/AddRepositoryForm'
 import { RepositoryList } from '../components/RepositoryList'
+import { navigateTo } from '../utils/router'
 
 const POLL_INTERVAL_MS = 1500
 
@@ -28,20 +29,27 @@ export function RepositoriesPage() {
     void refresh()
   }, [refresh])
 
-  const hasCloning = repositories.some((repo) => repo.status === 'cloning')
+  // Poll while any repository is cloning OR its history is being extracted.
+  const hasActivity = repositories.some(
+    (repo) => repo.status === 'cloning' || repo.parse_status === 'parsing',
+  )
   useEffect(() => {
-    if (!hasCloning) return
+    if (!hasActivity) return
     const timer = window.setInterval(() => {
       void refresh()
     }, POLL_INTERVAL_MS)
     return () => window.clearInterval(timer)
-  }, [hasCloning, refresh])
+  }, [hasActivity, refresh])
 
   const handleAdded = useCallback(
     (repo: Repository) => {
-      setNotice(
-        repo.status === 'cloning' ? `Cloning “${repo.name}”…` : `Added “${repo.name}”.`,
-      )
+      if (repo.status === 'cloning') {
+        setNotice(`Cloning “${repo.name}”…`)
+      } else if (repo.parse_status === 'parsing') {
+        setNotice(`Added “${repo.name}” — extracting its history…`)
+      } else {
+        setNotice(`Added “${repo.name}”.`)
+      }
       void refresh()
     },
     [refresh],
@@ -61,6 +69,23 @@ export function RepositoriesPage() {
     [refresh],
   )
 
+  const handleAnalyse = useCallback(
+    async (repo: Repository) => {
+      try {
+        await api.analyseRepository(repo.id)
+        setNotice(`Extracting the history of “${repo.name}”…`)
+        await refresh()
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : 'Failed to start the analysis.')
+      }
+    },
+    [refresh],
+  )
+
+  const handleOpen = useCallback((repo: Repository) => {
+    navigateTo(`/repositories/${repo.id}`)
+  }, [])
+
   return (
     <section className="page">
       <AddRepositoryForm onAdded={handleAdded} />
@@ -77,7 +102,12 @@ export function RepositoriesPage() {
       {loading ? (
         <div className="card muted">Loading repositories…</div>
       ) : (
-        <RepositoryList repositories={repositories} onDelete={handleDelete} />
+        <RepositoryList
+          repositories={repositories}
+          onDelete={handleDelete}
+          onAnalyse={handleAnalyse}
+          onOpen={handleOpen}
+        />
       )}
     </section>
   )

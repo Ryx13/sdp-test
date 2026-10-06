@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatBytes, formatDate, shortSha } from '../format'
+import { formatBytes, formatDate, formatTimestamp, shortSha } from '../format'
 
 describe('formatBytes', () => {
   it('renders human readable sizes', () => {
@@ -29,5 +29,13 @@ describe('formatDate', () => {
 
   it('returns the raw value for invalid input', () => {
     expect(formatDate('not-a-date')).toBe('not-a-date')
+  })
+})
+
+describe('formatTimestamp', () => {
+  it('formats unix timestamps reported by git', () => {
+    const rendered = formatTimestamp(1704196800) // 2024-01-02T12:00:00Z
+    expect(rendered).toMatch(/2024/)
+    expect(rendered).toBe(formatDate('2024-01-02T12:00:00+00:00'))
   })
 })
