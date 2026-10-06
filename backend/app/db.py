@@ -53,6 +53,14 @@ CREATE TABLE IF NOT EXISTS file_changes (
 );
 CREATE INDEX IF NOT EXISTS idx_file_changes_repo_path ON file_changes (repo_id, path);
 CREATE INDEX IF NOT EXISTS idx_file_changes_repo_sha ON file_changes (repo_id, sha);
+
+-- Manual author merging on top of .mailmap (alias identity -> merged identity)
+CREATE TABLE IF NOT EXISTS author_aliases (
+    repo_id TEXT NOT NULL,
+    alias TEXT NOT NULL,
+    target TEXT NOT NULL,
+    PRIMARY KEY (repo_id, alias)
+);
 """
 
 # Columns added to `repositories` after the initial release. Fresh databases get

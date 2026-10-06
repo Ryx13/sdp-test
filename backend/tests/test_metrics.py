@@ -537,3 +537,54 @@ def test_metrics_unknown_repository_returns_404(client: TestClient):
 )
 def test_reference_float_formatting(value: float, expected: str):
     assert _format_metric(value) == expected
+
+
+# ---------------------------------------------------------------------------
+# Manual commit lists (H_S) and manual author merging
+# ---------------------------------------------------------------------------
+
+
+def test_manual_commit_list_selection(client: TestClient, lab: dict):
+    body = client.get(
+        f"/api/repositories/{lab['id']}/metrics/repository",
+        params={"commits": f"{lab['c8'][:8]},{lab['c_side'][:8]},deadbeef"},
+    ).json()
+    assert body["commit_count"] == 2  # unknown tokens are ignored
+    assert body["metrics"] == {
+        "added": 6, "removed": 3, "growth": 3, "churn": 9, "modifications": 2,
+        "modification_frequency": 2 * (1 / 2), "churn_rate": 9 * (1 / 2),
+    }
+    assert body["authors"] == [
+        {"author": BOB, "added": 5, "removed": 2, "growth": 3, "churn": 7,
+         "modifications": 1, "ownership": 7 / 9},
+        {"author": ADA, "added": 1, "removed": 1, "growth": 0, "churn": 2,
+         "modifications": 1, "ownership": 2 / 9},
+    ]
+
+
+def test_manual_author_alias_merging(client: TestClient, lab: dict):
+    base = f"/api/repositories/{lab['id']}"
+    listing = client.get(f"{base}/author-aliases").json()
+    assert listing["aliases"] == {}
+    assert listing["identities"] == [ADA, BOB]
+
+    created = client.post(f"{base}/author-aliases", json={"alias": BOB, "target": ADA})
+    assert created.status_code == 200, created.text
+    assert created.json()["aliases"] == {BOB: ADA}
+
+    body = client.get(f"{base}/metrics/repository").json()
+    assert body["authors"] == [
+        {"author": ADA, "added": 26, "removed": 7, "growth": 19, "churn": 33,
+         "modifications": 8, "ownership": 1.0},
+    ]
+    # The export applies the same merge.
+    exported = client.get(f"{base}/metrics/export.csv").text
+    assert f",{BOB}," not in exported and BOB not in exported
+
+    same = client.post(f"{base}/author-aliases", json={"alias": ADA, "target": ADA})
+    assert same.status_code == 400
+
+    removed = client.delete(f"{base}/author-aliases", params={"alias": BOB})
+    assert removed.json()["aliases"] == {}
+    after = client.get(f"{base}/metrics/repository").json()
+    assert [row["author"] for row in after["authors"]] == [ADA, BOB]

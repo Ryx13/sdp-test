@@ -114,3 +114,15 @@ class TimelineBucketOut(BaseModel):
 class TimelineOut(BaseModel):
     bucket: Literal["day", "week", "month"]
     items: list[TimelineBucketOut]
+
+
+class AuthorAliasIn(BaseModel):
+    """A manual identity merge: ``alias`` is displayed as ``target``."""
+
+    alias: str = Field(min_length=1, max_length=300)
+    target: str = Field(min_length=1, max_length=300)
+
+
+class AuthorAliasesOut(BaseModel):
+    aliases: dict[str, str]
+    identities: list[str]
