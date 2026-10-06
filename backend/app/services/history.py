@@ -209,10 +209,11 @@ def _analyse(repo_id: str) -> None:
             """
             UPDATE repositories
                SET parse_status = 'ready', parse_progress = 100, parse_error = NULL,
-                   commit_count = ?, analysed_head = ?, parsed_at = ?
+                   commit_count = ?, analysed_head = ?, parsed_at = ?,
+                   head_commit = ?
              WHERE id = ?
             """,
-            (processed, head, _utcnow(), repo_id),
+            (processed, head, _utcnow(), head, repo_id),
         )
         conn.commit()
     except BaseException:
