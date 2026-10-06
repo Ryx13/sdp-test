@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 .venv/
 .pytest_cache/
+backend/.pytest-tmp/
+pytest-of-*/
 
 # Node
 node_modules/

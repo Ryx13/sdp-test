@@ -18,7 +18,7 @@ setup-frontend:
 test: test-backend test-frontend
 
 test-backend:
-	cd backend && ../$(PY) -m pytest
+	cd backend && mkdir -p .pytest-tmp && TMPDIR=$(CURDIR)/backend/.pytest-tmp ../$(PY) -m pytest
 
 test-frontend:
 	cd frontend && mkdir -p .vitest-tmp && TMPDIR=$(CURDIR)/frontend/.vitest-tmp npm test
