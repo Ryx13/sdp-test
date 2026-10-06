@@ -534,13 +534,13 @@ function AuthorOwnership({ authors }: { authors: AuthorMetric[] }) {
             aria-valuenow={Math.round(author.ownership * 100)}
             aria-valuemin={0}
             aria-valuemax={100}
-            style={{ flex: 1, height: 6, background: '#30363d', borderRadius: 3 }}
+            style={{ flex: 1, height: 6, background: '#ece3d0', borderRadius: 3 }}
           >
             <div
               style={{
                 width: `${Math.round(author.ownership * 100)}%`,
                 height: 6,
-                background: '#58a6ff',
+                background: '#9a6b3f',
                 borderRadius: 3,
               }}
             />

@@ -1,11 +1,11 @@
 :root {
-  --bg: #f4f6f9;
+  --bg: #f5efe3;
   --surface: #ffffff;
-  --border: #dfe4ea;
-  --text: #1f2933;
-  --muted: #6b7280;
-  --accent: #2563eb;
-  --accent-soft: #dbeafe;
+  --border: #e5dcc8;
+  --text: #2e2a22;
+  --muted: #837865;
+  --accent: #9a6b3f;
+  --accent-soft: #f0e5d2;
   --danger: #dc2626;
   --success-bg: #e7f6ec;
   --success-fg: #136c34;
@@ -20,8 +20,8 @@
 body {
   margin: 0;
   background:
-    radial-gradient(1100px 420px at 15% -10%, #e7efff 0%, rgba(231, 239, 255, 0) 60%),
-    radial-gradient(900px 380px at 95% 0%, #eef9f1 0%, rgba(238, 249, 241, 0) 55%),
+    radial-gradient(1100px 420px at 15% -10%, #efe6d3 0%, rgba(239, 230, 211, 0) 60%),
+    radial-gradient(900px 380px at 95% 0%, #f3ecdd 0%, rgba(243, 236, 221, 0) 55%),
     var(--bg);
   color: var(--text);
   font-family:
@@ -377,8 +377,8 @@ button.secondary:disabled {
   gap: 16px;
   flex-wrap: wrap;
   margin-bottom: 16px;
-  background: linear-gradient(120deg, #ffffff 0%, #eef4ff 60%, #e3edff 100%);
-  border-color: #ccdcff;
+  background: linear-gradient(120deg, #ffffff 0%, #f6efe0 60%, #efe5d0 100%);
+  border-color: #e0d3b8;
 }
 
 .detail-header h2 {
@@ -418,7 +418,7 @@ button.secondary:disabled {
 
 .stat-card:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 18px -12px rgba(37, 99, 235, 0.5);
+  box-shadow: 0 8px 18px -12px rgba(154, 107, 63, 0.5);
 }
 
 .stat-card .stat-value {
@@ -438,6 +438,8 @@ button.secondary:disabled {
 .card h3 {
   margin: 0 0 12px;
   font-size: 16px;
+  padding-left: 10px;
+  border-left: 3px solid var(--accent);
 }
 
 .commit-email {
@@ -469,6 +471,14 @@ button.secondary:disabled {
 .timeline-chart {
   display: block;
   color: var(--muted);
+}
+
+.repo-table tbody tr:nth-child(even) {
+  background: #faf6ec;
+}
+
+.repo-table tbody tr:hover {
+  background: var(--accent-soft);
 }
 
 
