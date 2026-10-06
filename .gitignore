@@ -10,6 +10,7 @@ pytest-of-*/
 node_modules/
 frontend/dist/
 frontend/.vitest-tmp/
+.scratch/
 
 # Runtime data (cloned repositories + sqlite catalog)
 data/

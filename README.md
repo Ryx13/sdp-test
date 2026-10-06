@@ -41,14 +41,27 @@ Ingestion notes:
 Requirements: Python 3.12+, Node 18+, git 2.40+.
 
 ```bash
-make setup     # python venv (backed by .venv) + npm install
+./start.sh     # handles setup automatically (or use `make setup` manually)
 ```
 
 ## Run
 
+### One command (recommended)
+
+```bash
+./start.sh           # first run installs deps, builds the frontend, serves on :8000
+PORT=9000 ./start.sh # serve on another port
+```
+
+Then open <http://127.0.0.1:8000>. The script is idempotent, so it is also the
+fastest way to restart the app after a `git pull`.
+
+### Manual commands
+
 Development (two terminals):
 
 ```bash
+make setup           # python venv (backed by .venv) + npm install
 make dev-backend     # http://localhost:8000 (API + docs at /docs)
 make dev-frontend    # http://localhost:5173 (proxies /api to the backend)
 ```
