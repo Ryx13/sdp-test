@@ -5,6 +5,10 @@
 #   ./start.sh              serve on http://127.0.0.1:8000
 #   PORT=9000 ./start.sh    serve on another port
 #
+# Data lives in ./data (SQLite catalog + extracted repositories) unless
+# RAT_DATA_DIR points somewhere else. Other knobs: RAT_MAX_UPLOAD_BYTES,
+# RAT_MAX_EXTRACTED_BYTES, RAT_CLONE_TIMEOUT, HOST.
+#
 # The script is idempotent: it creates the Python virtual environment on first
 # run, installs backend/frontend dependencies when missing, rebuilds the
 # frontend and then serves the whole app (API + dashboard) from one process.

@@ -44,6 +44,8 @@ body {
 
 .app-header {
   margin-bottom: 22px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
 }
 
 .brand {
@@ -53,13 +55,14 @@ body {
 }
 
 .brand-mark {
-  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  background: linear-gradient(135deg, #b8874e, #7c5528);
   color: #fff;
   font-weight: 700;
   letter-spacing: 0.06em;
   border-radius: 12px;
   padding: 10px 12px;
   font-size: 16px;
+  box-shadow: 0 6px 14px -8px rgba(124, 85, 40, 0.7);
 }
 
 .brand h1 {
@@ -150,6 +153,12 @@ button.primary {
   font-size: 14px;
   cursor: pointer;
   align-self: flex-start;
+  transition: background 0.12s ease, box-shadow 0.12s ease;
+}
+
+button.primary:hover:not(:disabled) {
+  background: #7f562f;
+  box-shadow: 0 8px 16px -10px rgba(127, 86, 47, 0.8);
 }
 
 button.primary:disabled {
@@ -210,6 +219,7 @@ button.danger:disabled {
   letter-spacing: 0.05em;
   padding: 8px 10px;
   border-bottom: 1px solid var(--border);
+  background: #faf6ec;
 }
 
 .repo-table td {
@@ -249,13 +259,13 @@ button.danger:disabled {
 }
 
 .badge-zip {
-  background: #eef2ff;
-  color: #4338ca;
+  background: #f3e9d6;
+  color: #8a5f34;
 }
 
 .badge-clone {
-  background: #ecfeff;
-  color: #0e7490;
+  background: #eef0e2;
+  color: #5c6b3c;
 }
 
 .badge-ready {
@@ -278,7 +288,7 @@ button.danger:disabled {
 
 .progress-fill {
   height: 100%;
-  background: var(--accent);
+  background: linear-gradient(90deg, #b8874e, #9a6b3f);
   transition: width 0.3s ease;
 }
 

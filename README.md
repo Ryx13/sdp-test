@@ -13,8 +13,9 @@ churn, modifications, frequency, churn rate and ownership).
 - [x] **Part 2** — History extraction: non-merge commit walking, rename-aware per-file
       line stats streamed into SQLite with progress, repository detail page with commit list
 - [x] **Part 3** — Metrics engine + API (file / directory / repository / commit-set / author),
-      validated for *exact* parity (all 62,601 rows for git, cJSON and Redis) against the
-      reference CSVs, plus a reference-format CSV export endpoint
+      validated for *exact* parity against the official reference CSVs — git 62,601 rows,
+      cJSON 984 rows, redis 18,302 rows, all byte-identical in the same order — plus a
+      reference-format CSV export endpoint
 - [x] **Part 4** — Dashboard visualisations: timeline activity chart, author ownership
       bars, commit-set filter controls (`since`/`until`/`commits`) and Files/Directories/
       Authors metric tabs on the repository page
