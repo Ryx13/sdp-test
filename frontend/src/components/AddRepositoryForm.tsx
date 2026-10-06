@@ -70,8 +70,10 @@ export function AddRepositoryForm({ onAdded }: Props) {
         </button>
       </div>
 
+      {/* Keys force a remount between branches: without them React would
+          morph the file input into a text input and warn about it. */}
       {mode === 'upload' ? (
-        <label className="field">
+        <label className="field" key="upload">
           <span>Repository archive (.zip including the .git folder)</span>
           <input
             ref={fileInput}
@@ -81,7 +83,7 @@ export function AddRepositoryForm({ onAdded }: Props) {
           />
         </label>
       ) : (
-        <label className="field">
+        <label className="field" key="clone">
           <span>Remote repository URL</span>
           <input
             type="text"

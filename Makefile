@@ -21,7 +21,7 @@ test-backend:
 	cd backend && ../$(PY) -m pytest
 
 test-frontend:
-	cd frontend && npm test
+	cd frontend && mkdir -p .vitest-tmp && TMPDIR=$(CURDIR)/frontend/.vitest-tmp npm test
 
 ## Development servers (run in two terminals)
 dev-backend:
