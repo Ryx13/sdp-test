@@ -38,3 +38,8 @@ def max_extracted_bytes() -> int:
 
 def clone_timeout_seconds() -> int:
     return int(os.environ.get("RAT_CLONE_TIMEOUT", 900))
+
+
+def frontend_dist() -> Path:
+    """Production frontend build served by the backend, when present."""
+    return Path(os.environ.get("RAT_FRONTEND_DIST", str(BASE_DIR / "frontend" / "dist")))
