@@ -8,14 +8,14 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import config, db
-from .api import repositories
+from .api import metrics, repositories
 
 
 def create_app() -> FastAPI:
     db.init_db()
     app = FastAPI(
         title="RAT — Repo Analysis Tool",
-        version="0.2.0",
+        version="0.3.0",
         description="Measures how git repositories evolve: churn, growth, ownership and more.",
     )
     app.add_middleware(
@@ -25,6 +25,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(repositories.router)
+    app.include_router(metrics.router)
 
     @app.get("/api/health", tags=["meta"])
     def health() -> dict:

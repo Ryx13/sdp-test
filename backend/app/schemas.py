@@ -56,3 +56,61 @@ class HistorySummaryOut(BaseModel):
     file_count: int
     added: int
     removed: int
+
+
+class ObjectMetricsOut(BaseModel):
+    added: int
+    removed: int
+    growth: int
+    churn: int
+    modifications: int
+    modification_frequency: float
+    churn_rate: float
+
+
+class FileMetricsOut(ObjectMetricsOut):
+    path: str
+
+
+class AuthorMetricsOut(BaseModel):
+    author: str
+    added: int
+    removed: int
+    growth: int
+    churn: int
+    modifications: int
+    ownership: float
+
+
+class RepositoryMetricsOut(BaseModel):
+    commit_count: int
+    metrics: ObjectMetricsOut
+    authors: list[AuthorMetricsOut]
+
+
+class ObjectMetricsPageOut(BaseModel):
+    total: int
+    offset: int
+    limit: int
+    items: list[FileMetricsOut]
+
+
+class ObjectDetailOut(BaseModel):
+    path: str
+    object_type: Literal["file", "directory", "repository"]
+    metrics: ObjectMetricsOut
+    authors: list[AuthorMetricsOut]
+
+
+class TimelineBucketOut(BaseModel):
+    key: str
+    start: int
+    added: int
+    removed: int
+    churn: int
+    commits: int
+
+
+class TimelineOut(BaseModel):
+    bucket: Literal["day", "week", "month"]
+    items: list[TimelineBucketOut]

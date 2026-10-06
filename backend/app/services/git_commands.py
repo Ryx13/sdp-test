@@ -78,7 +78,9 @@ def read_repo_state(path: Path) -> dict:
 # Streaming format for history extraction: every record starts with an RS byte
 # and header fields are separated by US bytes — both cannot appear in commit
 # metadata, so parsing is unambiguous. See services/history.py for the reader.
-LOG_RECORD = "%x1e%H%x1f%an%x1f%ae%x1f%ct%x1f%P"
+# Author identities use %aN/%aE (mailmap-applied) so aliases defined in a
+# repository's .mailmap are merged, matching the reference implementation.
+LOG_RECORD = "%x1e%H%x1f%aN%x1f%aE%x1f%ct%x1f%P"
 
 
 def count_history_commits(path: Path, timeout: float = 120.0) -> int:

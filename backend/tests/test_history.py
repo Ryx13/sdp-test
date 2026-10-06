@@ -1,7 +1,7 @@
 """History extraction semantics, verified against hand-built repository fixtures.
 
 Each scenario mirrors a rule from the brief: non-merge commits only, renames at
-50% detection, binary exclusion, deletions as removals, raw (un-mapped) author
+50% detection, binary exclusion, deletions as removals, mailmap-aware author
 identities and committer dates for commit sets.
 """
 

@@ -41,8 +41,10 @@ def find_repository_root(names: list[str]) -> str:
             candidates.add("/".join(parts[:index]))
     if not candidates:
         raise IngestionError(
-            "The archive does not contain a .git file or directory. "
-            "Zip the repository including its .git folder and try again."
+            "The archive does not contain a .git file or directory, so history "
+            "cannot be extracted. Note: archives downloaded from GitHub "
+            "(\"Download ZIP\" / source archives) never include .git. Zip a local "
+            "git clone including its .git folder, or use the Clone URL option."
         )
 
     def depth(value: str) -> int:
@@ -59,12 +61,29 @@ def find_repository_root(names: list[str]) -> str:
     return roots.pop()
 
 
+def _is_worktree_metadata(name: str) -> bool:
+    """Worktree files that change analysis output and must survive extraction.
+
+    All metrics come from the git object database, so the checked-out worktree
+    is skipped -- except for these two files, which git itself reads from the
+    worktree rather than from history when producing log output:
+
+    * a top-level ``.mailmap`` defines author aliases, which ``%aN``/``%aE``
+      apply during extraction;
+    * ``.gitattributes`` files influence how diffs are computed.
+    """
+    basename = name.rstrip("/").rsplit("/", 1)[-1]
+    return basename in {".mailmap", ".gitattributes"}
+
+
 def extract_repository(zf: zipfile.ZipFile, dest: Path, root: str) -> None:
     """Extract the repository's ``.git`` contents into ``dest``.
 
-    Only ``<root>/.git`` is written to disk: every metric is derived from the
-    git object database, so the checked-out worktree is redundant. Skipping it
-    keeps ingestion fast and storage small for large repositories.
+    Only ``<root>/.git`` plus the worktree metadata files listed in
+    :func:`_is_worktree_metadata` are written to disk: every metric is derived
+    from the git object database, so the rest of the checked-out worktree is
+    redundant. Skipping it keeps ingestion fast and storage small for large
+    repositories.
     """
     prefix = f"{root}/" if root else ""
     git_dir = f"{prefix}.git/"
@@ -73,7 +92,11 @@ def extract_repository(zf: zipfile.ZipFile, dest: Path, root: str) -> None:
     extracted = False
     for info in zf.infolist():
         name = info.filename.replace("\\", "/")
-        if name != f"{prefix}.git" and not name.startswith(git_dir):
+        if (
+            name != f"{prefix}.git"
+            and not name.startswith(git_dir)
+            and not _is_worktree_metadata(name)
+        ):
             continue
         total += info.file_size
         if total > budget:
