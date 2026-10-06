@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api, ApiError, type MetricsFilter } from '../api/client'
+import { api, ApiError, type AuthorAliases, type MetricsFilter } from '../api/client'
 import { TimelineChart } from '../components/TimelineChart'
 import type {
   AuthorMetric,
@@ -37,6 +37,11 @@ export function RepositoryDetailPage({ repoId }: Props) {
   const [tabRows, setTabRows] = useState<TabRow[]>([])
   const [tabTotal, setTabTotal] = useState(0)
   const [tabLoading, setTabLoading] = useState(false)
+  const [aliasData, setAliasData] = useState<AuthorAliases | null>(null)
+  const [aliasFrom, setAliasFrom] = useState('')
+  const [aliasTo, setAliasTo] = useState('')
+  const [aliasBusy, setAliasBusy] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   const load = useCallback(async () => {
     try {
@@ -101,7 +106,11 @@ export function RepositoryDetailPage({ repoId }: Props) {
         let rows: TabRow[] = []
         let total = 0
         if (tab === 'authors') {
-          const authors = await api.getAuthorMetrics(repoId, applied)
+          const [authors, aliases] = await Promise.all([
+            api.getAuthorMetrics(repoId, applied),
+            api.getAuthorAliases(repoId),
+          ])
+          if (Array.isArray(aliases?.identities) && !cancelled) setAliasData(aliases)
           if (Array.isArray(authors)) {
             rows = authors.map((author) => ({
               key: author.author,
@@ -146,7 +155,41 @@ export function RepositoryDetailPage({ repoId }: Props) {
     return () => {
       cancelled = true
     }
-  }, [ready, repoId, applied, tab])
+  }, [ready, repoId, applied, tab, refreshKey])
+
+  const applyAlias = useCallback(
+    async (alias: string, target: string) => {
+      setAliasBusy(true)
+      try {
+        await api.setAuthorAlias(repoId, alias, target)
+        setAliasFrom('')
+        setAliasTo('')
+        setRefreshKey((key) => key + 1)
+        void load()
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : 'Failed to merge the identities.')
+      } finally {
+        setAliasBusy(false)
+      }
+    },
+    [repoId, load],
+  )
+
+  const removeAlias = useCallback(
+    async (alias: string) => {
+      setAliasBusy(true)
+      try {
+        await api.deleteAuthorAlias(repoId, alias)
+        setRefreshKey((key) => key + 1)
+        void load()
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : 'Failed to remove the merge.')
+      } finally {
+        setAliasBusy(false)
+      }
+    },
+    [repoId, load],
+  )
 
   const applyFilters = useCallback(() => {
     const next: MetricsFilter = {}
@@ -418,6 +461,65 @@ export function RepositoryDetailPage({ repoId }: Props) {
             <p className="muted">
               Showing top {tabRows.length.toLocaleString()} of {tabTotal.toLocaleString()} by churn.
             </p>
+          )}
+          {tab === 'authors' && aliasData && (
+            <div className="alias-manager">
+              <div className="alias-row">
+                <span className="muted">Manual merge:</span>
+                <select
+                  aria-label="Identity to merge"
+                  value={aliasFrom}
+                  onChange={(event) => setAliasFrom(event.target.value)}
+                >
+                  <option value="">merge this identity…</option>
+                  {aliasData.identities.map((identity) => (
+                    <option key={identity} value={identity}>
+                      {identity}
+                    </option>
+                  ))}
+                </select>
+                <span className="muted">into</span>
+                <select
+                  aria-label="Merge target identity"
+                  value={aliasTo}
+                  onChange={(event) => setAliasTo(event.target.value)}
+                >
+                  <option value="">this identity…</option>
+                  {aliasData.identities.map((identity) => (
+                    <option key={identity} value={identity}>
+                      {identity}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={aliasBusy || !aliasFrom || !aliasTo || aliasFrom === aliasTo}
+                  onClick={() => void applyAlias(aliasFrom, aliasTo)}
+                >
+                  Merge
+                </button>
+              </div>
+              {Object.keys(aliasData.aliases).length > 0 && (
+                <ul className="alias-list">
+                  {Object.entries(aliasData.aliases).map(([alias, target]) => (
+                    <li key={alias}>
+                      <span>
+                        {alias} → <strong>{target}</strong>
+                      </span>
+                      <button
+                        type="button"
+                        className="link-button"
+                        disabled={aliasBusy}
+                        onClick={() => void removeAlias(alias)}
+                      >
+                        remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
         </div>
       )}

@@ -491,6 +491,49 @@ button.secondary:disabled {
   background: var(--accent-soft);
 }
 
+.alias-manager {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.alias-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.alias-row select {
+  font: inherit;
+  font-weight: 400;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  max-width: 300px;
+}
+
+.alias-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.alias-list li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
 
 .filter-row {
   display: flex;

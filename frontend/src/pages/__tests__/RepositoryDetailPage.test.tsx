@@ -180,6 +180,8 @@ describe('RepositoryDetailPage', () => {
       if (url.includes('/metrics/timeline')) return jsonResponse(timelineBody)
       if (url.includes('/metrics/files')) return jsonResponse(filesBody)
       if (url.includes('/metrics/authors')) return jsonResponse(metricsBody.authors)
+      if (url.includes('/author-aliases'))
+        return jsonResponse({ aliases: {}, identities: ['Ada Lovelace <ada@example.com>'] })
       if (url.includes('/commits')) return jsonResponse(firstPage)
       return jsonResponse(repo)
     })
@@ -190,12 +192,15 @@ describe('RepositoryDetailPage', () => {
     expect(await screen.findByText('src/app.ts')).toBeInTheDocument()
     expect(screen.getByText('Showing top 2 of 40 by churn.')).toBeInTheDocument()
 
-    // Switching to the authors tab fetches author metrics.
+    // Switching to the authors tab fetches author metrics and shows the
+    // manual merge controls.
     fireEvent.click(screen.getByRole('tab', { name: 'Authors' }))
     expect(await screen.findByText('100.0%')).toBeInTheDocument()
     expect(
       calls.some((url) => url.includes('/metrics/authors')),
     ).toBe(true)
+    expect(await screen.findByRole('button', { name: 'Merge' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Identity to merge')).toBeInTheDocument()
 
     // Applying a since-date refetches every metric endpoint with the filter.
     fireEvent.change(screen.getByLabelText(/since/i), { target: { value: '2024-01-01' } })

@@ -14,6 +14,11 @@ export interface MetricsFilter {
   commits?: string
 }
 
+export interface AuthorAliases {
+  aliases: Record<string, string>
+  identities: string[]
+}
+
 function metricsQuery(
   filter: MetricsFilter = {},
   extra: Record<string, string | number> = {},
@@ -116,4 +121,20 @@ export const api = {
 
   getAuthorMetrics: (id: string, filter: MetricsFilter = {}) =>
     request<AuthorMetric[]>(`/api/repositories/${id}/metrics/authors${metricsQuery(filter)}`),
+
+  getAuthorAliases: (id: string) =>
+    request<AuthorAliases>(`/api/repositories/${id}/author-aliases`),
+
+  setAuthorAlias: (id: string, alias: string, target: string) =>
+    request<AuthorAliases>(`/api/repositories/${id}/author-aliases`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alias, target }),
+    }),
+
+  deleteAuthorAlias: (id: string, alias: string) =>
+    request<AuthorAliases>(
+      `/api/repositories/${id}/author-aliases?alias=${encodeURIComponent(alias)}`,
+      { method: 'DELETE' },
+    ),
 }
