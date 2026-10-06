@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api, ApiError } from '../api/client'
+import { api, ApiError, type MetricsFilter } from '../api/client'
 import { TimelineChart } from '../components/TimelineChart'
 import type {
   AuthorMetric,
@@ -29,6 +29,14 @@ export function RepositoryDetailPage({ repoId }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [filterSince, setFilterSince] = useState('')
+  const [filterUntil, setFilterUntil] = useState('')
+  const [filterCommits, setFilterCommits] = useState('')
+  const [applied, setApplied] = useState<MetricsFilter>({})
+  const [tab, setTab] = useState<MetricsTab>('files')
+  const [tabRows, setTabRows] = useState<TabRow[]>([])
+  const [tabTotal, setTabTotal] = useState(0)
+  const [tabLoading, setTabLoading] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -44,8 +52,8 @@ export function RepositoryDetailPage({ repoId }: Props) {
       setError(null)
       try {
         const [metricsData, timelineData] = await Promise.all([
-          api.getRepositoryMetrics(repoId),
-          api.getTimeline(repoId),
+          api.getRepositoryMetrics(repoId, applied),
+          api.getTimeline(repoId, 'month', applied),
         ])
         setMetrics(metricsData)
         setTimeline(timelineData)
@@ -58,7 +66,7 @@ export function RepositoryDetailPage({ repoId }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [repoId])
+  }, [repoId, applied])
 
   useEffect(() => {
     void load()
@@ -80,6 +88,83 @@ export function RepositoryDetailPage({ repoId }: Props) {
     }, POLL_INTERVAL_MS)
     return () => window.clearInterval(timer)
   }, [parsing, repoId, load])
+
+  // Metric breakdown rows for the active tab, re-fetched whenever the commit
+  // set (H_t / H_i,j / H_S) changes.
+  const ready = repo?.parse_status === 'ready'
+  useEffect(() => {
+    if (!ready) return
+    let cancelled = false
+    setTabLoading(true)
+    const run = async () => {
+      try {
+        let rows: TabRow[] = []
+        let total = 0
+        if (tab === 'authors') {
+          const authors = await api.getAuthorMetrics(repoId, applied)
+          if (Array.isArray(authors)) {
+            rows = authors.map((author) => ({
+              key: author.author,
+              added: author.added,
+              removed: author.removed,
+              churn: author.churn,
+              modifications: author.modifications,
+              ownership: author.ownership,
+            }))
+            total = rows.length
+          }
+        } else {
+          const page =
+            tab === 'files'
+              ? await api.getFileMetrics(repoId, applied)
+              : await api.getDirectoryMetrics(repoId, applied)
+          const items = Array.isArray(page?.items) ? page.items : []
+          rows = items.map((item) => ({
+            key: item.path,
+            added: item.added,
+            removed: item.removed,
+            churn: item.churn,
+            modifications: item.modifications,
+            ownership: typeof item.ownership === 'number' ? item.ownership : null,
+          }))
+          total = typeof page?.total === 'number' ? page.total : rows.length
+        }
+        if (!cancelled) {
+          setTabRows(rows)
+          setTabTotal(total)
+        }
+      } catch {
+        if (!cancelled) {
+          setTabRows([])
+          setTabTotal(0)
+        }
+      } finally {
+        if (!cancelled) setTabLoading(false)
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [ready, repoId, applied, tab])
+
+  const applyFilters = useCallback(() => {
+    const next: MetricsFilter = {}
+    const since = parseDateBound(filterSince)
+    if (since !== null) next.since = since
+    const until = parseDateBound(filterUntil)
+    if (until !== null) next.until = until
+    const commits = filterCommits.trim()
+    if (commits) next.commits = commits
+    setApplied(next)
+  }, [filterSince, filterUntil, filterCommits])
+
+  const resetFilters = useCallback(() => {
+    setFilterSince('')
+    setFilterUntil('')
+    setFilterCommits('')
+    setApplied({})
+  }, [])
 
   const handleAnalyse = useCallback(async () => {
     try {
@@ -198,10 +283,61 @@ export function RepositoryDetailPage({ repoId }: Props) {
         </div>
       )}
 
+      {repo.parse_status === 'ready' && (
+        <div className="card">
+          <h3>
+            Commit set{' '}
+            <span className="muted">
+              (H_t / H_i,j / H_S — leave empty to use every commit)
+            </span>
+          </h3>
+          <form
+            className="filter-row"
+            onSubmit={(event) => {
+              event.preventDefault()
+              applyFilters()
+            }}
+          >
+            <label className="filter-field">
+              Since <span className="muted">(incl.)</span>
+              <input
+                type="date"
+                value={filterSince}
+                onChange={(event) => setFilterSince(event.target.value)}
+              />
+            </label>
+            <label className="filter-field">
+              Until <span className="muted">(excl.)</span>
+              <input
+                type="date"
+                value={filterUntil}
+                onChange={(event) => setFilterUntil(event.target.value)}
+              />
+            </label>
+            <label className="filter-field filter-field-wide">
+              Commits <span className="muted">(SHAs or prefixes, comma-separated)</span>
+              <input
+                type="text"
+                placeholder="4a3b2c1d, deadbeef…"
+                value={filterCommits}
+                onChange={(event) => setFilterCommits(event.target.value)}
+              />
+            </label>
+            <button type="submit">Apply</button>
+            <button type="button" className="secondary" onClick={resetFilters}>
+              Reset
+            </button>
+          </form>
+        </div>
+      )}
+
       {metrics?.metrics && timeline && Array.isArray(timeline.items) && timeline.items.length > 0 && (
         <div className="card">
           <h3>
-            Metrics <span className="muted">(all commits · non-merge · .mailmap names)</span>
+            Metrics{' '}
+            <span className="muted">
+              ({filterLabel(applied)} · non-merge · .mailmap names)
+            </span>
           </h3>
           <div className="stat-grid">
             <Stat label="Churn (λ)" value={metrics.metrics.churn} />
@@ -219,6 +355,69 @@ export function RepositoryDetailPage({ repoId }: Props) {
               <h4 className="muted">Author ownership (churn share)</h4>
               <AuthorOwnership authors={metrics.authors.slice(0, 8)} />
             </>
+          )}
+        </div>
+      )}
+
+      {repo.parse_status === 'ready' && (
+        <div className="card">
+          <h3>
+            Breakdown <span className="muted">({filterLabel(applied)})</span>
+          </h3>
+          <div className="tabs" role="tablist" aria-label="Metric breakdown">
+            {TABS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === item.id}
+                className={tab === item.id ? 'tab active' : 'tab'}
+                onClick={() => setTab(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          {tabLoading ? (
+            <p className="muted">Loading…</p>
+          ) : tabRows.length === 0 ? (
+            <p className="muted">No rows for this commit set.</p>
+          ) : (
+            <table className="repo-table">
+              <thead>
+                <tr>
+                  <th>{tab === 'authors' ? 'Author' : 'Path'}</th>
+                  <th>Added</th>
+                  <th>Removed</th>
+                  <th>Churn</th>
+                  <th>Mods</th>
+                  <th>Share</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tabRows.map((row) => (
+                  <tr key={row.key}>
+                    <td>
+                      <code className="path-cell" title={row.key}>
+                        {row.key}
+                      </code>
+                    </td>
+                    <td className="plus">+{row.added.toLocaleString()}</td>
+                    <td className="minus">−{row.removed.toLocaleString()}</td>
+                    <td>{row.churn.toLocaleString()}</td>
+                    <td>{row.modifications.toLocaleString()}</td>
+                    <td className="muted">
+                      {row.ownership === null ? '—' : `${(row.ownership * 100).toFixed(1)}%`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {tab !== 'authors' && tabTotal > tabRows.length && (
+            <p className="muted">
+              Showing top {tabRows.length.toLocaleString()} of {tabTotal.toLocaleString()} by churn.
+            </p>
           )}
         </div>
       )}
@@ -272,6 +471,44 @@ export function RepositoryDetailPage({ repoId }: Props) {
       )}
     </section>
   )
+}
+
+const TABS = [
+  { id: 'files', label: 'Files' },
+  { id: 'directories', label: 'Directories' },
+  { id: 'authors', label: 'Authors' },
+] as const
+
+type MetricsTab = (typeof TABS)[number]['id']
+
+interface TabRow {
+  key: string
+  added: number
+  removed: number
+  churn: number
+  modifications: number
+  ownership: number | null
+}
+
+/** Date-only inputs are interpreted as UTC midnight (since inclusive, until exclusive). */
+function parseDateBound(value: string): number | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const timestamp = Date.parse(trimmed.length === 10 ? `${trimmed}T00:00:00Z` : trimmed)
+  if (Number.isNaN(timestamp)) return null
+  return Math.floor(timestamp / 1000)
+}
+
+function filterLabel(filter: MetricsFilter): string {
+  const parts: string[] = []
+  if (filter.since !== undefined) {
+    parts.push(`since ${new Date(filter.since * 1000).toISOString().slice(0, 10)}`)
+  }
+  if (filter.until !== undefined) {
+    parts.push(`until ${new Date(filter.until * 1000).toISOString().slice(0, 10)}`)
+  }
+  if (filter.commits) parts.push(`commits: ${filter.commits}`)
+  return parts.length > 0 ? parts.join(' · ') : 'all commits'
 }
 
 function BackLink() {

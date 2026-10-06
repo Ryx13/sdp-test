@@ -86,3 +86,15 @@ export interface Timeline {
   bucket: 'day' | 'week' | 'month'
   items: TimelineBucket[]
 }
+
+export interface ObjectMetricRow extends ObjectMetrics {
+  path: string
+  ownership?: number
+}
+
+export interface ObjectMetricsPage {
+  total: number
+  offset: number
+  limit: number
+  items: ObjectMetricRow[]
+}

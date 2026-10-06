@@ -1,10 +1,31 @@
 import type {
+  AuthorMetric,
   CommitPage,
   HistorySummary,
+  ObjectMetricsPage,
   Repository,
   RepositoryMetrics,
   Timeline,
 } from '../types'
+
+export interface MetricsFilter {
+  since?: number
+  until?: number
+  commits?: string
+}
+
+function metricsQuery(
+  filter: MetricsFilter = {},
+  extra: Record<string, string | number> = {},
+): string {
+  const params = new URLSearchParams()
+  if (filter.since !== undefined) params.set('since', String(filter.since))
+  if (filter.until !== undefined) params.set('until', String(filter.until))
+  if (filter.commits) params.set('commits', filter.commits)
+  for (const [key, value] of Object.entries(extra)) params.set(key, String(value))
+  const query = params.toString()
+  return query ? `?${query}` : ''
+}
 
 export class ApiError extends Error {
   status: number
@@ -67,9 +88,32 @@ export const api = {
 
   getSummary: (id: string) => request<HistorySummary>(`/api/repositories/${id}/summary`),
 
-  getRepositoryMetrics: (id: string) =>
-    request<RepositoryMetrics>(`/api/repositories/${id}/metrics/repository`),
+  getRepositoryMetrics: (id: string, filter: MetricsFilter = {}) =>
+    request<RepositoryMetrics>(
+      `/api/repositories/${id}/metrics/repository${metricsQuery(filter)}`,
+    ),
 
-  getTimeline: (id: string, bucket: 'day' | 'week' | 'month' = 'month') =>
-    request<Timeline>(`/api/repositories/${id}/metrics/timeline?bucket=${bucket}`),
+  getTimeline: (id: string, bucket: 'day' | 'week' | 'month' = 'month', filter: MetricsFilter = {}) =>
+    request<Timeline>(`/api/repositories/${id}/metrics/timeline${metricsQuery(filter, { bucket })}`),
+
+  getFileMetrics: (id: string, filter: MetricsFilter = {}, options: { limit?: number } = {}) =>
+    request<ObjectMetricsPage>(
+      `/api/repositories/${id}/metrics/files${metricsQuery(filter, {
+        sort: 'churn',
+        order: 'desc',
+        limit: options.limit ?? 50,
+      })}`,
+    ),
+
+  getDirectoryMetrics: (id: string, filter: MetricsFilter = {}, options: { limit?: number } = {}) =>
+    request<ObjectMetricsPage>(
+      `/api/repositories/${id}/metrics/directories${metricsQuery(filter, {
+        sort: 'churn',
+        order: 'desc',
+        limit: options.limit ?? 50,
+      })}`,
+    ),
+
+  getAuthorMetrics: (id: string, filter: MetricsFilter = {}) =>
+    request<AuthorMetric[]>(`/api/repositories/${id}/metrics/authors${metricsQuery(filter)}`),
 }

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type {
   CommitPage,
   HistorySummary,
+  ObjectMetricsPage,
   Repository,
   RepositoryMetrics,
   Timeline,
@@ -92,6 +93,34 @@ const timelineBody: Timeline = {
   items: [{ key: '2024-01', start: 1704067200, added: 12, removed: 4, churn: 16, commits: 2 }],
 }
 
+const filesBody: ObjectMetricsPage = {
+  total: 40,
+  offset: 0,
+  limit: 50,
+  items: [
+    {
+      path: 'src/app.ts',
+      added: 9,
+      removed: 3,
+      growth: 6,
+      churn: 12,
+      modifications: 2,
+      modification_frequency: 1.0,
+      churn_rate: 6.0,
+    },
+    {
+      path: 'README.md',
+      added: 3,
+      removed: 1,
+      growth: 2,
+      churn: 4,
+      modifications: 1,
+      modification_frequency: 0.5,
+      churn_rate: 2.0,
+    },
+  ],
+}
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -140,6 +169,44 @@ describe('RepositoryDetailPage', () => {
     expect(
       screen.getByRole('progressbar', { name: /ada lovelace.*ownership/i }),
     ).toBeInTheDocument()
+  })
+
+  it('switches breakdown tabs and applies the commit-set filter', async () => {
+    const calls: string[] = []
+    stubFetch((url) => {
+      calls.push(url)
+      if (url.endsWith('/summary')) return jsonResponse(summary)
+      if (url.includes('/metrics/repository')) return jsonResponse(metricsBody)
+      if (url.includes('/metrics/timeline')) return jsonResponse(timelineBody)
+      if (url.includes('/metrics/files')) return jsonResponse(filesBody)
+      if (url.includes('/metrics/authors')) return jsonResponse(metricsBody.authors)
+      if (url.includes('/commits')) return jsonResponse(firstPage)
+      return jsonResponse(repo)
+    })
+
+    render(<RepositoryDetailPage repoId="abc123" />)
+
+    // Files tab is the default view.
+    expect(await screen.findByText('src/app.ts')).toBeInTheDocument()
+    expect(screen.getByText('Showing top 2 of 40 by churn.')).toBeInTheDocument()
+
+    // Switching to the authors tab fetches author metrics.
+    fireEvent.click(screen.getByRole('tab', { name: 'Authors' }))
+    expect(await screen.findByText('100.0%')).toBeInTheDocument()
+    expect(
+      calls.some((url) => url.includes('/metrics/authors')),
+    ).toBe(true)
+
+    // Applying a since-date refetches every metric endpoint with the filter.
+    fireEvent.change(screen.getByLabelText(/since/i), { target: { value: '2024-01-01' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+    await waitFor(() =>
+      expect(
+        calls.some(
+          (url) => url.includes('/metrics/repository?') && url.includes('since=1704067200'),
+        ),
+      ).toBe(true),
+    )
   })
 
   it('loads further commit pages on demand', async () => {

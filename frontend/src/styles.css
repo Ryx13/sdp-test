@@ -441,3 +441,44 @@ button.secondary:disabled {
 .load-more {
   margin-top: 12px;
 }
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.filter-field input {
+  font: inherit;
+  font-weight: 400;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.filter-field input:focus {
+  outline: 2px solid var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.filter-field-wide {
+  flex: 1;
+  min-width: 220px;
+}
+
+.path-cell {
+  font-size: 12.5px;
+  word-break: break-all;
+}

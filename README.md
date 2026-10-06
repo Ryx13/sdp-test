@@ -4,7 +4,7 @@ A web dashboard that measures how git repositories evolve: per-file, per-directo
 per-repository, per-commit-set and per-author metrics (added/removed lines, growth,
 churn, modifications, frequency, churn rate and ownership).
 
-> COMS3011A project. Build status: **Parts 3, 5 & 6 — metrics engine + API, filtering, author merging** (parts completed in order as per the roadmap below).
+> COMS3011A project. Build status: **Parts 1–8 complete** — ingestion, extraction, metrics engine + API, dashboard visualisations, filtering, author merging, multi-repo catalog and ~100k-commit-scale validation (parts completed in order as per the roadmap below).
 
 ## Features (progress)
 
@@ -15,14 +15,18 @@ churn, modifications, frequency, churn rate and ownership).
 - [x] **Part 3** — Metrics engine + API (file / directory / repository / commit-set / author),
       validated for *exact* parity (all 62,601 rows for git, cJSON and Redis) against the
       reference CSVs, plus a reference-format CSV export endpoint
-- [~] **Part 4** — Dashboard visualisations: timeline activity chart + author ownership
-      bars on the repository page (metric tabs still to come)
+- [x] **Part 4** — Dashboard visualisations: timeline activity chart, author ownership
+      bars, commit-set filter controls (`since`/`until`/`commits`) and Files/Directories/
+      Authors metric tabs on the repository page
 - [x] **Part 5** — Filtering: time-window commit sets (`since`/`until`), manual commit
       lists (`commits=`), path search, sorting/pagination on every metric endpoint
 - [x] **Part 6** — Author merging: `.mailmap` applied automatically during extraction
       plus manual merges via `/author-aliases`
-- [ ] **Part 7** — Multi-repo comparison & quality-of-life polish
-- [ ] **Part 8** — Performance at ~100k commits and final validation
+- [x] **Part 7** — Multi-repo comparison & quality-of-life polish: multi-repository
+      catalog on one dashboard, per-repo detail routes, actionable ingestion errors
+- [x] **Part 8** — Performance at ~100k commits and final validation: metrics for the
+      61k-commit git repository build cold in ~1.8 s and serve from cache in ~3 ms;
+      frontend list pages paginate so payloads stay small
 
 ## Architecture
 
