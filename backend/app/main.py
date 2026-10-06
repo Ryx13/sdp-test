@@ -15,7 +15,7 @@ def create_app() -> FastAPI:
     db.init_db()
     app = FastAPI(
         title="RAT — Repo Analysis Tool",
-        version="0.1.0",
+        version="0.2.0",
         description="Measures how git repositories evolve: churn, growth, ownership and more.",
     )
     app.add_middleware(

@@ -71,5 +71,7 @@ def update_repository(repo_id: str, **fields) -> dict | None:
 
 def delete_repository(repo_id: str) -> bool:
     with get_db() as conn:
+        conn.execute("DELETE FROM commits WHERE repo_id = ?", (repo_id,))
+        conn.execute("DELETE FROM file_changes WHERE repo_id = ?", (repo_id,))
         cursor = conn.execute("DELETE FROM repositories WHERE id = ?", (repo_id,))
     return cursor.rowcount > 0

@@ -10,7 +10,7 @@ from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
 from .. import config
-from . import catalog, storage
+from . import catalog, history, storage
 from .git_commands import (
     GitError,
     clone_repository,
@@ -174,4 +174,11 @@ def perform_clone(repo_id: str, url: str) -> None:
         default_branch=state["default_branch"],
         head_commit=state["head_commit"],
         size_bytes=directory_size(dest),
+        # Flip straight into "parsing" so pollers never observe a
+        # ready-but-not-yet-queued window, then analyse inline (this already
+        # runs on a background worker).
+        parse_status="parsing",
+        parse_progress=0,
+        parse_error=None,
     )
+    history.analyse_repository(repo_id)

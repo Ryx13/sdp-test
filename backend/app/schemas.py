@@ -24,3 +24,35 @@ class RepositoryOut(BaseModel):
     head_commit: str | None = None
     size_bytes: int | None = None
     created_at: str
+    # history extraction
+    parse_status: Literal["none", "parsing", "ready", "error"]
+    parse_progress: int
+    parse_error: str | None = None
+    commit_count: int | None = None
+    analysed_head: str | None = None
+    parsed_at: str | None = None
+
+
+class CommitOut(BaseModel):
+    sha: str
+    author_name: str
+    author_email: str
+    committer_ts: int
+    parent_sha: str | None = None
+    added: int
+    removed: int
+
+
+class CommitPageOut(BaseModel):
+    total: int
+    offset: int
+    limit: int
+    items: list[CommitOut]
+
+
+class HistorySummaryOut(BaseModel):
+    commit_count: int
+    author_count: int
+    file_count: int
+    added: int
+    removed: int

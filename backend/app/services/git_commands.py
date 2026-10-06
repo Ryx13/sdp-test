@@ -29,7 +29,7 @@ class GitError(Exception):
     """Raised when a git invocation fails or times out."""
 
 
-def _tail(text: str, max_lines: int = 4, max_chars: int = 500) -> str:
+def tail_text(text: str, max_lines: int = 4, max_chars: int = 500) -> str:
     lines = [line.strip() for line in (text or "").splitlines() if line.strip()]
     return "\n".join(lines[-max_lines:])[-max_chars:]
 
@@ -53,7 +53,7 @@ def run_git(args: list[str], cwd: Path | None = None, timeout: float = 60.0) -> 
     except subprocess.TimeoutExpired as exc:
         raise GitError(f"git {' '.join(args)} timed out after {timeout:.0f}s") from exc
     if proc.returncode != 0:
-        raise GitError(_tail(proc.stderr) or f"git {' '.join(args)} failed")
+        raise GitError(tail_text(proc.stderr) or f"git {' '.join(args)} failed")
     return proc.stdout
 
 
@@ -73,6 +73,45 @@ def read_repo_state(path: Path) -> dict:
         "head_commit": head_commit,
         "default_branch": None if branch == "HEAD" else branch,
     }
+
+
+# Streaming format for history extraction: every record starts with an RS byte
+# and header fields are separated by US bytes — both cannot appear in commit
+# metadata, so parsing is unambiguous. See services/history.py for the reader.
+LOG_RECORD = "%x1e%H%x1f%an%x1f%ae%x1f%ct%x1f%P"
+
+
+def count_history_commits(path: Path, timeout: float = 120.0) -> int:
+    """Number of non-merge commits reachable from HEAD (the H̄ set size)."""
+    output = run_git(["rev-list", "--no-merges", "--count", "HEAD"], cwd=path, timeout=timeout)
+    return int(output.strip())
+
+
+def open_history_stream(path: Path, stderr=None) -> subprocess.Popen:
+    """Start ``git log`` for non-merge commits with per-file numstat output.
+
+    ``-z`` makes paths NUL-separated and unquoted (no C-style escaping), and
+    rename detection runs at the 50% similarity threshold required by the
+    brief. The caller owns the process: read ``stdout`` (bytes), then
+    ``wait()``; pass an open binary file as ``stderr`` to capture diagnostics.
+    """
+    return subprocess.Popen(
+        [
+            "git",
+            "log",
+            "--no-merges",
+            "--find-renames=50%",
+            "--numstat",
+            "-z",
+            "--no-show-signature",
+            f"--format={LOG_RECORD}",
+            "HEAD",
+        ],
+        cwd=str(path),
+        env=_GIT_ENV,
+        stdout=subprocess.PIPE,
+        stderr=stderr if stderr is not None else subprocess.DEVNULL,
+    )
 
 
 def directory_size(path: Path) -> int:
@@ -163,4 +202,4 @@ def clone_repository(
                 on_progress(int(percent))
 
     if proc.wait() != 0:
-        raise GitError(_tail("".join(stderr_lines)) or "git clone failed")
+        raise GitError(tail_text("".join(stderr_lines)) or "git clone failed")
