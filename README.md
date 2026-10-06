@@ -4,13 +4,14 @@ A web dashboard that measures how git repositories evolve: per-file, per-directo
 per-repository, per-commit-set and per-author metrics (added/removed lines, growth,
 churn, modifications, frequency, churn rate and ownership).
 
-> COMS3011A project. Build status: **Part 1/8 — foundation & repository ingestion**.
+> COMS3011A project. Build status: **Part 2/8 — history extraction**.
 
 ## Features (progress)
 
 - [x] **Part 1** — Repository ingestion: ZIP upload (with `.git`) and full remote clone,
       multi-repository catalog, status tracking, repository management UI
-- [ ] **Part 2** — History extraction: non-merge commit walking, rename-aware per-file metrics
+- [x] **Part 2** — History extraction: non-merge commit walking, rename-aware per-file
+      line stats streamed into SQLite with progress, repository detail page with commit list
 - [ ] **Part 3** — Metrics engine + API (file / directory / repository / commit-set / author)
 - [ ] **Part 4** — Dashboard visualisations
 - [ ] **Part 5** — Filtering (repo, author, object, commit ranges / manual commit lists)
@@ -35,6 +36,17 @@ Ingestion notes:
   and archives are validated (zip-slip, size limits, `.git` presence) before use.
 - Clones are full (deep) clones performed with `git clone --progress`; progress is
   reported to the UI and failures are recorded on the repository entry.
+
+Analysis notes:
+
+- As soon as a repository becomes `ready`, its history is analysed automatically;
+  a manual restart is available from the UI (Analyse / Retry) and via
+  `POST /api/repositories/{id}/analyse`.
+- `git log --no-merges --find-renames=50% --numstat` is streamed and parsed from raw
+  bytes into `commits` + `file_changes` tables. Merge commits are skipped, renames are
+  attributed to the destination path (source recorded), binary files are excluded.
+- Extraction runs in short write transactions so the API (progress polling, commit
+  pages) stays responsive; re-analysis is idempotent and replaces prior data.
 
 ## Setup
 
@@ -78,7 +90,7 @@ make serve           # builds the frontend and serves everything on :8000
 make test            # pytest (backend) + vitest (frontend)
 ```
 
-## API (Part 1)
+## API (Parts 1–2)
 
 | Method | Path                        | Description                                  |
 | ------ | --------------------------- | -------------------------------------------- |
@@ -88,6 +100,9 @@ make test            # pytest (backend) + vitest (frontend)
 | POST   | `/api/repositories/clone`   | `{ "url": "..." }` — deep-clone a remote repo |
 | GET    | `/api/repositories/{id}`    | Repository detail                            |
 | DELETE | `/api/repositories/{id}`    | Delete a repository and its local data       |
+| POST   | `/api/repositories/{id}/analyse` | (Re)start history extraction — 202 accepted, 409 while already running |
+| GET    | `/api/repositories/{id}/commits` | Paginated non-merge commits (`offset`, `limit`) |
+| GET    | `/api/repositories/{id}/summary` | Repository totals (commits, authors, files, lines) |
 
 Environment overrides: `RAT_DATA_DIR`, `RAT_MAX_UPLOAD_BYTES`,
 `RAT_MAX_EXTRACTED_BYTES`, `RAT_CLONE_TIMEOUT`.
