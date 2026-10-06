@@ -1,6 +1,12 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { CommitPage, HistorySummary, Repository } from '../../types'
+import type {
+  CommitPage,
+  HistorySummary,
+  Repository,
+  RepositoryMetrics,
+  Timeline,
+} from '../../types'
 import { RepositoryDetailPage } from '../RepositoryDetailPage'
 
 const repo: Repository = {
@@ -57,6 +63,35 @@ const firstPage: CommitPage = {
   ],
 }
 
+const metricsBody: RepositoryMetrics = {
+  commit_count: 2,
+  metrics: {
+    added: 12,
+    removed: 4,
+    growth: 8,
+    churn: 16,
+    modifications: 2,
+    modification_frequency: 1.0,
+    churn_rate: 8.0,
+  },
+  authors: [
+    {
+      author: 'Ada Lovelace <ada@example.com>',
+      added: 12,
+      removed: 4,
+      growth: 8,
+      churn: 16,
+      modifications: 2,
+      ownership: 1.0,
+    },
+  ],
+}
+
+const timelineBody: Timeline = {
+  bucket: 'month',
+  items: [{ key: '2024-01', start: 1704067200, added: 12, removed: 4, churn: 16, commits: 2 }],
+}
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -82,6 +117,8 @@ describe('RepositoryDetailPage', () => {
   it('renders repository metadata, statistics and commits', async () => {
     stubFetch((url) => {
       if (url.endsWith('/summary')) return jsonResponse(summary)
+      if (url.includes('/metrics/repository')) return jsonResponse(metricsBody)
+      if (url.includes('/metrics/timeline')) return jsonResponse(timelineBody)
       if (url.includes('/commits')) return jsonResponse(firstPage)
       return jsonResponse(repo)
     })
@@ -96,6 +133,13 @@ describe('RepositoryDetailPage', () => {
     expect(screen.getByText('b'.repeat(10))).toBeInTheDocument()
     expect(screen.getByText('+10')).toBeInTheDocument()
     expect(screen.getAllByText('−2')).toHaveLength(2)
+
+    // Part 4: the metrics panel renders the timeline chart and ownership bar.
+    expect(screen.getByText('Modification frequency (η)')).toBeInTheDocument()
+    expect(await screen.findByRole('img', { name: /timeline chart/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('progressbar', { name: /ada lovelace.*ownership/i }),
+    ).toBeInTheDocument()
   })
 
   it('loads further commit pages on demand', async () => {

@@ -46,3 +46,43 @@ export interface HistorySummary {
   added: number
   removed: number
 }
+
+export interface ObjectMetrics {
+  added: number
+  removed: number
+  growth: number
+  churn: number
+  modifications: number
+  modification_frequency: number
+  churn_rate: number
+}
+
+export interface AuthorMetric {
+  author: string
+  added: number
+  removed: number
+  growth: number
+  churn: number
+  modifications: number
+  ownership: number
+}
+
+export interface RepositoryMetrics {
+  commit_count: number
+  metrics: ObjectMetrics
+  authors: AuthorMetric[]
+}
+
+export interface TimelineBucket {
+  key: string
+  start: number
+  added: number
+  removed: number
+  churn: number
+  commits: number
+}
+
+export interface Timeline {
+  bucket: 'day' | 'week' | 'month'
+  items: TimelineBucket[]
+}

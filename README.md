@@ -4,7 +4,7 @@ A web dashboard that measures how git repositories evolve: per-file, per-directo
 per-repository, per-commit-set and per-author metrics (added/removed lines, growth,
 churn, modifications, frequency, churn rate and ownership).
 
-> COMS3011A project. Build status: **Part 2/8 — history extraction**.
+> COMS3011A project. Build status: **Parts 3, 5 & 6 — metrics engine + API, filtering, author merging** (parts completed in order as per the roadmap below).
 
 ## Features (progress)
 
@@ -12,10 +12,15 @@ churn, modifications, frequency, churn rate and ownership).
       multi-repository catalog, status tracking, repository management UI
 - [x] **Part 2** — History extraction: non-merge commit walking, rename-aware per-file
       line stats streamed into SQLite with progress, repository detail page with commit list
-- [ ] **Part 3** — Metrics engine + API (file / directory / repository / commit-set / author)
-- [ ] **Part 4** — Dashboard visualisations
-- [ ] **Part 5** — Filtering (repo, author, object, commit ranges / manual commit lists)
-- [ ] **Part 6** — Author merging (`.mailmap` + manual)
+- [x] **Part 3** — Metrics engine + API (file / directory / repository / commit-set / author),
+      validated for *exact* parity (all 62,601 rows for git, cJSON and Redis) against the
+      reference CSVs, plus a reference-format CSV export endpoint
+- [~] **Part 4** — Dashboard visualisations: timeline activity chart + author ownership
+      bars on the repository page (metric tabs still to come)
+- [x] **Part 5** — Filtering: time-window commit sets (`since`/`until`), manual commit
+      lists (`commits=`), path search, sorting/pagination on every metric endpoint
+- [x] **Part 6** — Author merging: `.mailmap` applied automatically during extraction
+      plus manual merges via `/author-aliases`
 - [ ] **Part 7** — Multi-repo comparison & quality-of-life polish
 - [ ] **Part 8** — Performance at ~100k commits and final validation
 
@@ -30,10 +35,15 @@ data/       Runtime state (gitignored): cloned/extracted repos + rat.sqlite3.
 
 Ingestion notes:
 
-- ZIP uploads are extracted to `data/repos/<id>/`. Only the `.git` contents are
-  written to disk — all metrics are derived from the git object database, so the
-  checked-out worktree is redundant. This keeps ingestion fast and storage small,
-  and archives are validated (zip-slip, size limits, `.git` presence) before use.
+- ZIP uploads are extracted to `data/repos/<id>/`. Only the `.git` contents (plus
+  top-level `.mailmap` / `.gitattributes` worktree metadata, which git reads from the
+  worktree during extraction) are written to disk — all metrics are derived from the
+  git object database, so the rest of the checked-out worktree is redundant. This keeps
+  ingestion fast and storage small, and archives are validated (zip-slip, size limits,
+  `.git` presence) before use.
+  Note: archives downloaded from GitHub via *Code → Download ZIP* never include `.git`
+  and are rejected with a helpful message — zip a local `git clone` **including its
+  `.git` folder**, or use the Clone URL option instead.
 - Clones are full (deep) clones performed with `git clone --progress`; progress is
   reported to the UI and failures are recorded on the repository entry.
 
@@ -90,7 +100,7 @@ make serve           # builds the frontend and serves everything on :8000
 make test            # pytest (backend) + vitest (frontend)
 ```
 
-## API (Parts 1–2)
+## API (Parts 1–6)
 
 | Method | Path                        | Description                                  |
 | ------ | --------------------------- | -------------------------------------------- |
@@ -103,6 +113,16 @@ make test            # pytest (backend) + vitest (frontend)
 | POST   | `/api/repositories/{id}/analyse` | (Re)start history extraction — 202 accepted, 409 while already running |
 | GET    | `/api/repositories/{id}/commits` | Paginated non-merge commits (`offset`, `limit`) |
 | GET    | `/api/repositories/{id}/summary` | Repository totals (commits, authors, files, lines) |
+| GET    | `/api/repositories/{id}/metrics/repository` | Commit-set metrics + author rows. `since` (incl.) / `until` (excl.) UNIX seconds, `commits` = manual list of SHAs/prefixes (H_S) |
+| GET    | `/api/repositories/{id}/metrics/files` | Per-file metrics page (`sort`, `order`, `limit`, `offset`, `q`, commit set) |
+| GET    | `/api/repositories/{id}/metrics/directories` | Per-directory (subtree rollup) metrics page |
+| GET    | `/api/repositories/{id}/metrics/authors` | Author metrics (n, churn, ownership) for a commit set |
+| GET    | `/api/repositories/{id}/metrics/object?path=` | One file/directory/`/` detail with per-author breakdown |
+| GET    | `/api/repositories/{id}/metrics/timeline?bucket=day\|week\|month` | Added/removed/commits per time bucket |
+| GET    | `/api/repositories/{id}/metrics/export.csv` | Every metric row in the reference CSV format (validated for exact parity) |
+| GET    | `/api/repositories/{id}/author-aliases` | Configured manual merges + all identities seen |
+| POST   | `/api/repositories/{id}/author-aliases` | `{ "alias": "...", "target": "..." }` — merge two identities |
+| DELETE | `/api/repositories/{id}/author-aliases?alias=` | Remove a manual merge |
 
 Environment overrides: `RAT_DATA_DIR`, `RAT_MAX_UPLOAD_BYTES`,
 `RAT_MAX_EXTRACTED_BYTES`, `RAT_CLONE_TIMEOUT`.

@@ -1,4 +1,10 @@
-import type { CommitPage, HistorySummary, Repository } from '../types'
+import type {
+  CommitPage,
+  HistorySummary,
+  Repository,
+  RepositoryMetrics,
+  Timeline,
+} from '../types'
 
 export class ApiError extends Error {
   status: number
@@ -60,4 +66,10 @@ export const api = {
     request<CommitPage>(`/api/repositories/${id}/commits?offset=${offset}&limit=${limit}`),
 
   getSummary: (id: string) => request<HistorySummary>(`/api/repositories/${id}/summary`),
+
+  getRepositoryMetrics: (id: string) =>
+    request<RepositoryMetrics>(`/api/repositories/${id}/metrics/repository`),
+
+  getTimeline: (id: string, bucket: 'day' | 'week' | 'month' = 'month') =>
+    request<Timeline>(`/api/repositories/${id}/metrics/timeline?bucket=${bucket}`),
 }

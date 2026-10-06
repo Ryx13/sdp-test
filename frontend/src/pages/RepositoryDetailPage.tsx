@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../api/client'
-import type { Commit, HistorySummary, Repository } from '../types'
+import { TimelineChart } from '../components/TimelineChart'
+import type {
+  AuthorMetric,
+  Commit,
+  HistorySummary,
+  Repository,
+  RepositoryMetrics,
+  Timeline,
+} from '../types'
 import { formatBytes, formatTimestamp, shortSha } from '../utils/format'
 import { navigateTo } from '../utils/router'
 
@@ -14,6 +22,8 @@ interface Props {
 export function RepositoryDetailPage({ repoId }: Props) {
   const [repo, setRepo] = useState<Repository | null>(null)
   const [summary, setSummary] = useState<HistorySummary | null>(null)
+  const [metrics, setMetrics] = useState<RepositoryMetrics | null>(null)
+  const [timeline, setTimeline] = useState<Timeline | null>(null)
   const [commits, setCommits] = useState<Commit[]>([])
   const [total, setTotal] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -32,6 +42,17 @@ export function RepositoryDetailPage({ repoId }: Props) {
       setCommits(page.items)
       setTotal(page.total)
       setError(null)
+      try {
+        const [metricsData, timelineData] = await Promise.all([
+          api.getRepositoryMetrics(repoId),
+          api.getTimeline(repoId),
+        ])
+        setMetrics(metricsData)
+        setTimeline(timelineData)
+      } catch {
+        // The metric panels are additive: the repository page stays usable
+        // while history is missing or still being extracted.
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to load the repository.')
     } finally {
@@ -177,6 +198,31 @@ export function RepositoryDetailPage({ repoId }: Props) {
         </div>
       )}
 
+      {metrics?.metrics && timeline && Array.isArray(timeline.items) && timeline.items.length > 0 && (
+        <div className="card">
+          <h3>
+            Metrics <span className="muted">(all commits · non-merge · .mailmap names)</span>
+          </h3>
+          <div className="stat-grid">
+            <Stat label="Churn (λ)" value={metrics.metrics.churn} />
+            <Stat label="Modifications (n)" value={metrics.metrics.modifications} />
+            <Stat
+              label="Modification frequency (η)"
+              value={metrics.metrics.modification_frequency.toFixed(4)}
+            />
+            <Stat label="Churn rate (ρ)" value={metrics.metrics.churn_rate.toFixed(2)} />
+          </div>
+          <h4 className="muted">Line activity per month</h4>
+          <TimelineChart buckets={timeline.items} />
+          {Array.isArray(metrics.authors) && metrics.authors.length > 0 && (
+            <>
+              <h4 className="muted">Author ownership (churn share)</h4>
+              <AuthorOwnership authors={metrics.authors.slice(0, 8)} />
+            </>
+          )}
+        </div>
+      )}
+
       {commits.length > 0 && (
         <div className="card">
           <h3>
@@ -236,10 +282,47 @@ function BackLink() {
   )
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function AuthorOwnership({ authors }: { authors: AuthorMetric[] }) {
+  return (
+    <div className="author-board">
+      {authors.map((author) => (
+        <div
+          key={author.author}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0.3rem 0' }}
+        >
+          <span style={{ minWidth: '13rem' }}>{author.author}</span>
+          <div
+            role="progressbar"
+            aria-label={`${author.author} ownership`}
+            aria-valuenow={Math.round(author.ownership * 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            style={{ flex: 1, height: 6, background: '#30363d', borderRadius: 3 }}
+          >
+            <div
+              style={{
+                width: `${Math.round(author.ownership * 100)}%`,
+                height: 6,
+                background: '#58a6ff',
+                borderRadius: 3,
+              }}
+            />
+          </div>
+          <span className="muted">
+            churn {author.churn.toLocaleString()} · {(author.ownership * 100).toFixed(1)}%
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function Stat({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="stat-card">
-      <div className="stat-value">{value.toLocaleString()}</div>
+      <div className="stat-value">
+        {typeof value === 'number' ? value.toLocaleString() : value}
+      </div>
       <div className="stat-label">{label}</div>
     </div>
   )
